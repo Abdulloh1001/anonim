@@ -33,35 +33,35 @@ def parse_payload(payload: str):
 
 def ensure_user(u):
     conn = db_conn(); c = conn.cursor()
-    c.execute("SELECT id FROM users WHERE id=?", (u.id,))
+    c.execute("SELECT id FROM users WHERE id=%s", (u.id,))
     new_user = False
     if c.fetchone() is None:
         c.execute("INSERT INTO users (id, username, first_name, created_at, tokens, photo_active) VALUES (?,?,?,?,?,?)",
                   (u.id, u.username, u.first_name or "", time.time(), 0, 0))
         new_user = True
     else:
-        c.execute("UPDATE users SET username=?, first_name=? WHERE id=?", (u.username, u.first_name or "", u.id))
+        c.execute("UPDATE users SET username=?, first_name=? WHERE id=%s", (u.username, u.first_name or "", u.id))
     conn.commit(); conn.close()
     return new_user
 
 def get_tokens(uid):
     conn=db_conn();c=conn.cursor()
-    c.execute("SELECT tokens FROM users WHERE id=?", (uid,))
+    c.execute("SELECT tokens FROM users WHERE id=%s", (uid,))
     r=c.fetchone();conn.close()
     return r[0] if r else 0
 
 def add_tokens(uid, n):
     conn=db_conn();c=conn.cursor()
-    c.execute("SELECT tokens FROM users WHERE id=?", (uid,))
+    c.execute("SELECT tokens FROM users WHERE id=%s", (uid,))
     r=c.fetchone(); prev=r[0] if r else 0
     new=prev+n
-    c.execute("UPDATE users SET tokens=? WHERE id=?", (new, uid))
+    c.execute("UPDATE users SET tokens=? WHERE id=%s", (new, uid))
     conn.commit();conn.close()
     return prev,new
 
 def display_for(u_id):
     conn = db_conn(); c = conn.cursor()
-    c.execute("SELECT username FROM users WHERE id=?", (u_id,))
+    c.execute("SELECT username FROM users WHERE id=%s", (u_id,))
     row = c.fetchone()
     conn.close()
     
@@ -72,7 +72,7 @@ def display_for(u_id):
 
 def find_owner_for_anon(anon_id):
     conn = db_conn(); c = conn.cursor()
-    c.execute("SELECT owner_id FROM anon_sessions WHERE anon_id=? ORDER BY id DESC LIMIT 1", (anon_id,))
+    c.execute("SELECT owner_id FROM anon_sessions WHERE anon_id=%s ORDER BY id DESC LIMIT 1", (anon_id,))
     r = c.fetchone(); conn.close()
     return r[0] if r else None
 
@@ -84,21 +84,21 @@ def save_notification(owner_id, anon_user_id, owner_message_id):
 
 def get_anon_from_reply(owner_id, owner_message_id):
     conn = db_conn(); c = conn.cursor()
-    c.execute("SELECT anon_user_id FROM owner_notifications WHERE owner_id=? AND owner_message_id=? ORDER BY id DESC LIMIT 1",
+    c.execute("SELECT anon_user_id FROM owner_notifications WHERE owner_id=%s AND owner_message_id=%s ORDER BY id DESC LIMIT 1",
               (owner_id, owner_message_id))
     r = c.fetchone(); conn.close()
     return r[0] if r else None
 
 def get_referrals(owner_id):
     conn = db_conn(); c = conn.cursor()
-    c.execute("SELECT referred_id FROM referrals WHERE referrer_id=?", (owner_id,))
+    c.execute("SELECT referred_id FROM referrals WHERE referrer_id=%s", (owner_id,))
     rows = [r[0] for r in c.fetchall()]
     conn.close(); return rows
 
 def add_referral(owner_id, new_user_id):
     conn = db_conn()
     c = conn.cursor()
-    c.execute("SELECT 1 FROM referrals WHERE referrer_id=? AND referred_id=?", (owner_id, new_user_id))
+    c.execute("SELECT 1 FROM referrals WHERE referrer_id=%s AND referred_id=%s", (owner_id, new_user_id))
     exists = c.fetchone()
     if exists:
         conn.close()
@@ -112,7 +112,7 @@ def add_referral(owner_id, new_user_id):
 def record_session(owner_id, anon_id):
     conn = db_conn()
     c = conn.cursor()
-    c.execute("SELECT id FROM anon_sessions WHERE owner_id=? AND anon_id=?", (owner_id, anon_id))
+    c.execute("SELECT id FROM anon_sessions WHERE owner_id=%s AND anon_id=%s", (owner_id, anon_id))
     exists = c.fetchone()
     if not exists:
         c.execute("INSERT INTO anon_sessions (owner_id, anon_id, created_at) VALUES (?,?,?)",

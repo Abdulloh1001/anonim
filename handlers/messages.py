@@ -34,7 +34,7 @@ async def check_media_permission(user_id):
     tokens = get_tokens(user_id)
     conn = db_conn()
     c = conn.cursor()
-    c.execute("SELECT photo_active FROM users WHERE id=?", (user_id,))
+    c.execute("SELECT photo_active FROM users WHERE id=%s", (user_id,))
     row = c.fetchone()
     photo_active = row[0] if row is not None else 0
     conn.close()

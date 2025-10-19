@@ -89,7 +89,7 @@ async def balans(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ref_text = f"{ref_count} ta odam" if ref_count > 0 else "Hech kim hali"
 
     conn = db_conn(); c = conn.cursor()
-    c.execute("SELECT photo_active FROM users WHERE id=?", (user.id,))
+    c.execute("SELECT photo_active FROM users WHERE id=%s", (user.id,))
     is_photo_active = c.fetchone()[0]
     conn.close()
 
@@ -147,7 +147,7 @@ async def give_tokens(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     conn = db_conn(); c = conn.cursor()
-    c.execute("SELECT id FROM users WHERE id=?", (target_id,))
+    c.execute("SELECT id FROM users WHERE id=%s", (target_id,))
     if not c.fetchone():
         conn.close()
         await update.message.reply_text("❌ Bunday foydalanuvchi topilmadi")
