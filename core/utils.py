@@ -36,11 +36,11 @@ def ensure_user(u):
     c.execute("SELECT id FROM users WHERE id=%s", (u.id,))
     new_user = False
     if c.fetchone() is None:
-        c.execute("INSERT INTO users (id, username, first_name, created_at, tokens, photo_active) VALUES (?,?,?,?,?,?)",
+        c.execute("INSERT INTO users (id, username, first_name, created_at, tokens, photo_active) VALUES (%s,%s,%s,%s,%s,%s)",
                   (u.id, u.username, u.first_name or "", time.time(), 0, 0))
         new_user = True
     else:
-        c.execute("UPDATE users SET username=?, first_name=? WHERE id=%s", (u.username, u.first_name or "", u.id))
+        c.execute("UPDATE users SET username=%s, first_name=%s WHERE id=%s", (u.username, u.first_name or "", u.id))
     conn.commit(); conn.close()
     return new_user
 
@@ -78,7 +78,7 @@ def find_owner_for_anon(anon_id):
 
 def save_notification(owner_id, anon_user_id, owner_message_id):
     conn = db_conn(); c = conn.cursor()
-    c.execute("INSERT INTO owner_notifications (owner_id, anon_user_id, owner_message_id, created_at) VALUES (?,?,?,?)",
+    c.execute("INSERT INTO owner_notifications (owner_id, anon_user_id, owner_message_id, created_at) VALUES (%s,%s,%s,%s)",
               (owner_id, anon_user_id, owner_message_id, time.time()))
     conn.commit(); conn.close()
 
@@ -103,8 +103,8 @@ def add_referral(owner_id, new_user_id):
     if exists:
         conn.close()
         return False
-    c.execute("INSERT INTO referrals (referrer_id, referred_id, created_at) VALUES (?,?,?)",
-             (owner_id, new_user_id, time.time()))
+    c.execute("INSERT INTO referrals (referrer_id, referred_id, created_at) VALUES (%s,%s,%s)",
+            (owner_id, new_user_id, time.time()))
     conn.commit()
     conn.close()
     return True
@@ -115,8 +115,8 @@ def record_session(owner_id, anon_id):
     c.execute("SELECT id FROM anon_sessions WHERE owner_id=%s AND anon_id=%s", (owner_id, anon_id))
     exists = c.fetchone()
     if not exists:
-        c.execute("INSERT INTO anon_sessions (owner_id, anon_id, created_at) VALUES (?,?,?)",
-                 (owner_id, anon_id, time.time()))
+        c.execute("INSERT INTO anon_sessions (owner_id, anon_id, created_at) VALUES (%s,%s,%s)",
+                (owner_id, anon_id, time.time()))
         conn.commit()
     conn.close()
 

@@ -28,7 +28,7 @@ def gift_tokens():
 
         conn = db_conn()
         c = conn.cursor()
-        c.execute("SELECT id FROM users WHERE id=?", (user_id,))
+        c.execute("SELECT id FROM users WHERE id=%s", (user_id,))
         if not c.fetchone():
             conn.close()
             return jsonify({
