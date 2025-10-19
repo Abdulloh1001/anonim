@@ -19,12 +19,10 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if already_active:
                 await query.edit_message_text("❗ Ta'rif allaqachon faol.")
             else:
-                c.execute("UPDATE users SET photo_active=1, tokens=tokens-? WHERE id=%s", (PHOTO_TOKEN_THRESHOLD, user.id))
+                c.execute("UPDATE users SET photo_active=1, tokens=tokens-%s WHERE id=%s", (PHOTO_TOKEN_THRESHOLD, user.id))
                 conn.commit()
                 await query.edit_message_text(
                     "✅ Ta'rif faollashtirildi! Endi siz quyidagilarni yubora olasiz:\n\n"
-                    "📸 Rasmlar\n"
-                    "🎯 Stikerlar\n"
                     "🎥 Videolar\n"
                     "🎵 Audio/MP3\n"
                     "🎤 Ovozli xabarlar"

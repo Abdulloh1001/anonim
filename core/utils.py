@@ -55,7 +55,7 @@ def add_tokens(uid, n):
     c.execute("SELECT tokens FROM users WHERE id=%s", (uid,))
     r=c.fetchone(); prev=r[0] if r else 0
     new=prev+n
-    c.execute("UPDATE users SET tokens=? WHERE id=%s", (new, uid))
+    c.execute("UPDATE users SET tokens=%s WHERE id=%s", (new, uid))
     conn.commit();conn.close()
     return prev,new
 
