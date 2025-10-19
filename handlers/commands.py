@@ -90,31 +90,33 @@ async def balans(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     conn = db_conn(); c = conn.cursor()
     c.execute("SELECT photo_active FROM users WHERE id=?", (user.id,))
-    row = c.fetchone()
-    is_photo_active = bool(row[0]) if row else False
-
+    is_photo_active = c.fetchone()[0]
     conn.close()
 
-    status = (
-        "🏅 Premium ta'rif faol!\n\n"
-        "Siz yubora oladigan media turlar:\n"
-        "🎥 Videolar\n"
-        "🎵 Audio/MP3\n"
-        "🎤 Ovozli xabarlar"
-        if is_photo_active
-        else f"🔒 Premium ta'rif uchun {PHOTO_TOKEN_THRESHOLD} token kerak!\n\n"
-        "Premium ta'rif orqali yubora oladigan media turlar:\n"
-        "🎥 Videolar\n"
-        "🎵 Audio/MP3\n"
-        "🎤 Ovozli xabarlar"
+    if is_photo_active:
+        status = (
+            "🏅 Premium ta'rif faol!\n\n"
+            "Siz yubora oladigan media turlar:\n"
+            "📸 Rasmlar\n"
+            "🎥 Videolar\n"
+            "🎵 Audio/MP3\n"
+            "🎤 Ovozli xabarlar"
+        )
+    else:
+        status = (
+            f"🔒 Premium ta'rif uchun {PHOTO_TOKEN_THRESHOLD} token kerak!\n\n"
+            "Premium ta'rif orqali yubora oladigan media turlar:\n"
+            "📸 Rasmlar\n"
+            "🎥 Videolar\n"
+            "🎵 Audio/MP3\n"
+            "🎤 Ovozli xabarlar"
+        )
+
+    # 🔹 Tugma har doim chiqadi (token tekshirilmaydi)
+    keyboard = InlineKeyboardMarkup(
+        [[InlineKeyboardButton("⚡ Ta'rifni faollashtirish", callback_data="activate_photo")]]
     )
 
-    keyboard = None
-    if not is_photo_active and tokens >= PHOTO_TOKEN_THRESHOLD:
-        keyboard = InlineKeyboardMarkup(
-            [[InlineKeyboardButton("⚡ Ta'rifni faollashtirish", callback_data="activate_photo")]]
-        )
-    print("DEBUG:", is_photo_active, tokens)
     await update.message.reply_text(
         f"💰 Tokenlaringiz: <b>{tokens}</b>\n"
         f"👥 Taklif qilganlar: {ref_text}\n\n"
