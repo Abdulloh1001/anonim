@@ -4,6 +4,8 @@ from handlers.commands import start, help_cmd, balans, give_tokens, token
 from handlers.messages import handle_text, handle_photo, handle_sticker, handle_video, handle_voice, handle_audio
 from handlers.callbacks import handle_callback
 from core.config import BOT_TOKEN
+from core.db import init_db
+init_db()
 
 def main():
     if not BOT_TOKEN:
