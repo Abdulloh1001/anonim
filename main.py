@@ -1,15 +1,15 @@
+import asyncio
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, CallbackQueryHandler
 from core.db import init_db
 from handlers.commands import start, help_cmd, balans, give_tokens, token
 from handlers.messages import handle_text, handle_photo, handle_sticker, handle_video, handle_voice, handle_audio
 from handlers.callbacks import handle_callback
 from core.config import BOT_TOKEN
-from core.db import init_db
-init_db()
+from admin_server import run_server
 
-def main():
+async def main():
     if not BOT_TOKEN:
-        print("Please set BOT_TOKEN in .env")
+        print("❌ Please set BOT_TOKEN in .env")
         return
 
     init_db()
@@ -29,16 +29,9 @@ def main():
     app.add_handler(CallbackQueryHandler(handle_callback))
 
     print("🤖 Bot ishga tushdi...")
-    app.run_polling()
+    await app.run_polling()
 
 if __name__ == "__main__":
     import threading
-    from admin_server import run_server
-    
-    # Admin panel serverini alohida threadda ishga tushirish
-    admin_thread = threading.Thread(target=run_server)
-    admin_thread.daemon = True
-    admin_thread.start()
-    
-    # Asosiy botni ishga tushirish
-    main()
+    threading.Thread(target=run_server, daemon=True).start()
+    asyncio.run(main())
