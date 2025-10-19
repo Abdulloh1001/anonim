@@ -90,7 +90,9 @@ async def balans(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     conn = db_conn(); c = conn.cursor()
     c.execute("SELECT photo_active FROM users WHERE id=?", (user.id,))
-    is_photo_active = c.fetchone()[0]
+    row = c.fetchone()
+    is_photo_active = bool(row[0]) if row else False
+
     conn.close()
 
     status = (
