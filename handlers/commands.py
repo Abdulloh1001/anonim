@@ -114,7 +114,7 @@ async def balans(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = InlineKeyboardMarkup(
             [[InlineKeyboardButton("⚡ Ta'rifni faollashtirish", callback_data="activate_photo")]]
         )
-
+    print("DEBUG:", is_photo_active, tokens)
     await update.message.reply_text(
         f"💰 Tokenlaringiz: <b>{tokens}</b>\n"
         f"👥 Taklif qilganlar: {ref_text}\n\n"
