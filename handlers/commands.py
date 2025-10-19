@@ -1,26 +1,7 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 import time
-    if not is_photo_active and tokens >= PHOTO_TOKEN_THRESHOLD:
-        keyboard = InlineKeyboardMarkup(
-            [[InlineKeyboardButton("⚡ Ta'rifni faollashtirish", callback_data="activate_photo")]]
-        )
-
-    await update.message.reply_text(
-        f"💰 Tokenlaringiz: <b>{tokens}</b>\n"
-        f"👥 Taklif qilganlar: {ref_text}\n\n"
-        f"💎 Token yig'ish uchun /token buyrug'ini bosing\n\n"
-        f"{status}",
-        parse_mode="HTML",
-        reply_markup=keyboard
-    )te.message.reply_text(
-        f"💰 Tokenlaringiz: <b>{tokens}</b>\n"
-        f"👥 Taklif qilganlar: {ref_text}\n\n"
-        f"💎 Token yig'ish uchun /token buyrug'ini bosing\n\n"
-        f"{status}",
-        parse_mode="HTML",
-        reply_markup=keyboard
-    )m core.utils import (
+from core.utils import (
     ensure_user, make_payload, parse_payload, add_referral,
     record_session, add_tokens, get_tokens, get_referrals,
     display_for, log_channel_send, db_conn
@@ -59,7 +40,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"<b>Assalamu alaykum, {user.first_name or 'foydalanuvchi'}!</b>\n\n"
         f"Bu sizning anonim havolangiz:\n<a href='{link}'>{link}</a>\n\n"
         f"Ushbu linkni boshqalarga yuboring — ular sizga anonim xabar yubora oladi.\n\n"
-        f"� Token yig'ish uchun /token buyrug'ini bosing."
+        f"💎 Token yig'ish uchun /token buyrug'ini bosing."
     )
 
     if is_new:
@@ -102,8 +83,6 @@ async def balans(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ensure_user(user)
     tokens = get_tokens(user.id)
     refs = get_referrals(user.id)
-    pl = make_payload(user.id)
-    link = f"https://t.me/{context.bot.username}?start={pl}"
 
     # referallar soni
     ref_count = len(refs) if refs else 0
@@ -136,8 +115,8 @@ async def balans(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         f"💰 Tokenlaringiz: <b>{tokens}</b>\n"
-        f"� Taklif qilganlar: {ref_text}\n\n"
-        f"� Token yig'ish uchun /token buyrug'ini bosing\n\n"
+        f"👥 Taklif qilganlar: {ref_text}\n\n"
+        f"💎 Token yig'ish uchun /token buyrug'ini bosing\n\n"
         f"{status}",
         parse_mode="HTML",
         reply_markup=keyboard
