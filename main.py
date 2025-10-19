@@ -6,6 +6,7 @@ from handlers.messages import handle_text, handle_photo, handle_sticker, handle_
 from handlers.callbacks import handle_callback
 from core.config import BOT_TOKEN
 from admin_server import run_server
+from telegram import Update
 
 
 def run_bot():
@@ -32,7 +33,7 @@ def run_bot():
     app.add_handler(CallbackQueryHandler(handle_callback))
 
     print("🤖 Bot ishga tushdi...")
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+    app.run_polling()
 
 
 if __name__ == "__main__":
