@@ -1,7 +1,26 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 import time
-from core.utils import (
+    if not is_photo_active and tokens >= PHOTO_TOKEN_THRESHOLD:
+        keyboard = InlineKeyboardMarkup(
+            [[InlineKeyboardButton("⚡ Ta'rifni faollashtirish", callback_data="activate_photo")]]
+        )
+
+    await update.message.reply_text(
+        f"💰 Tokenlaringiz: <b>{tokens}</b>\n"
+        f"👥 Taklif qilganlar: {ref_text}\n\n"
+        f"💎 Token yig'ish uchun /token buyrug'ini bosing\n\n"
+        f"{status}",
+        parse_mode="HTML",
+        reply_markup=keyboard
+    )te.message.reply_text(
+        f"💰 Tokenlaringiz: <b>{tokens}</b>\n"
+        f"👥 Taklif qilganlar: {ref_text}\n\n"
+        f"💎 Token yig'ish uchun /token buyrug'ini bosing\n\n"
+        f"{status}",
+        parse_mode="HTML",
+        reply_markup=keyboard
+    )m core.utils import (
     ensure_user, make_payload, parse_payload, add_referral,
     record_session, add_tokens, get_tokens, get_referrals,
     display_for, log_channel_send, db_conn
