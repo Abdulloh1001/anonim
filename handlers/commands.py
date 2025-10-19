@@ -98,7 +98,7 @@ async def balans(update: Update, context: ContextTypes.DEFAULT_TYPE):
     status = (
         "🏅 Premium ta'rif faol!\n\n"
         "Siz yubora oladigan media turlar:\n"
-        " Videolar\n"
+        "🎥 Videolar\n"
         "🎵 Audio/MP3\n"
         "🎤 Ovozli xabarlar"
         if is_photo_active
