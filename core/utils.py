@@ -59,16 +59,24 @@ def add_tokens(uid, n):
     conn.commit();conn.close()
     return prev,new
 
-def display_for(u_id):
+def display_for(u_id: int):
     conn = db_conn(); c = conn.cursor()
-    c.execute("SELECT username FROM users WHERE id=%s", (u_id,))
+    c.execute("SELECT username, first_name FROM users WHERE id=%s", (u_id,))
     row = c.fetchone()
     conn.close()
     
-    if row and row[0]:  # username mavjud bo'lsa
-        return f'<a href="https://t.me/{row[0]}">@{row[0]}</a>'
-    else:  # username yo'q bo'lsa
-        return f'<a href="tg://user?id={u_id}">Foydalanuvchi</a>'
+    if not row:
+        return f'<a href="tg://user?id={u_id}">ID:{u_id}</a>'
+
+    username, first_name = row
+
+    if username:
+        return f'<a href="https://t.me/{username}">@{username}</a>'
+    elif first_name:
+        safe_name = first_name.replace("<", "").replace(">", "")
+        return f'<a href="tg://user?id={u_id}">{safe_name}</a>'
+    else:
+        return f'<a href="tg://user?id={u_id}">ID:{u_id}</a>'
 
 def find_owner_for_anon(anon_id):
     conn = db_conn(); c = conn.cursor()
