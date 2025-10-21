@@ -11,7 +11,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == "activate_photo":
         if tokens < PHOTO_TOKEN_THRESHOLD:
-            await query.edit_message_text("❌ Token yetarli emas.")
+            await query.edit_message_text("❌ Ta'rifni faollashtirish uchun kamida {} ta token kerak. Sizning balansigiz: {} token.".format(PHOTO_TOKEN_THRESHOLD, tokens))
         else:
             conn = db_conn(); c = conn.cursor()
             c.execute("SELECT photo_active FROM users WHERE id=%s", (user.id,))
@@ -23,6 +23,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 conn.commit()
                 await query.edit_message_text(
                     "✅ Ta'rif faollashtirildi! Endi siz quyidagilarni yubora olasiz:\n\n"
+                    "📸 Rasmlar\n"
                     "🎥 Videolar\n"
                     "🎵 Audio/MP3\n"
                     "🎤 Ovozli xabarlar"

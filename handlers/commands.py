@@ -10,15 +10,30 @@ from core.config import REF_REWARD, PHOTO_TOKEN_THRESHOLD
 
 ADMIN_IDS = [7404099386]  # Admin ID'larini shu yerga qo'shing
 
+from core.channel import check_subscription, generate_random_link, save_user_link, get_referrer_by_link
+from core.config import CHANNEL_LINK
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     is_new = ensure_user(user)
     args = context.args
 
+    # Kanalga obuna bo'lganligini tekshirish
+    is_subscribed = await check_subscription(user.id, context)
+    if not is_subscribed:
+        txt = (
+            f"<b>Assalamu alaykum, {user.first_name or 'foydalanuvchi'}!</b>\n\n"
+            f"Bot funksiyalaridan foydalanish uchun kanalimizga obuna bo'ling:\n"
+            f"<a href='{CHANNEL_LINK}'>Kanalga o'tish</a>\n\n"
+            f"Obuna bo'lgandan so'ng /start ni qayta bosing."
+        )
+        await update.message.reply_text(txt, parse_mode="HTML")
+        return
+
     # Agar referal orqali kelsa
     if args:
-        payload = args[0]
-        owner_id = parse_payload(payload)
+        link = args[0]
+        owner_id = get_referrer_by_link(link)
         if owner_id and owner_id != user.id:
             created = add_referral(owner_id, user.id)
             if created:
@@ -32,14 +47,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 prev, new = add_tokens(owner_id, REF_REWARD)
                 await log_channel_send(context.bot, f"{display_for(owner_id)} {REF_REWARD} token oldi ✅")
 
-    # Oddiy /start
-    pl = make_payload(user.id)
-    link = f"https://t.me/{context.bot.username}?start={pl}"
+    # Yangi referral link yaratish
+    ref_link = generate_random_link()
+    save_user_link(user.id, ref_link)
 
     txt = (
         f"<b>Assalamu alaykum, {user.first_name or 'foydalanuvchi'}!</b>\n\n"
-        f"Bu sizning anonim havolangiz:\n<a href='{link}'>{link}</a>\n\n"
-        f"Ushbu linkni boshqalarga yuboring — ular sizga anonim xabar yubora oladi.\n\n"
+        f"Bu sizning referral havolangiz:\n<a href='{ref_link}'>{ref_link}</a>\n\n"
+        f"Ushbu linkni boshqalarga yuboring — do'stlaringiz kanal a'zosi bo'lganda siz token olasiz!\n\n"
         f"💎 Token yig'ish uchun /token buyrug'ini bosing."
     )
 
