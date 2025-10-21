@@ -4,7 +4,7 @@ import time
 from core.utils import (
     ensure_user, make_payload, parse_payload, add_referral,
     record_session, add_tokens, get_tokens, get_referrals,
-    display_for, log_channel_send, db_conn
+    display_for, log_channel_send, db_conn, check_subscription_and_show_button
 )
 from core.config import REF_REWARD, PHOTO_TOKEN_THRESHOLD
 
@@ -123,6 +123,11 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def balans(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     ensure_user(user)
+    
+    # Obunani tekshirish
+    if not await check_subscription_and_show_button(update, context):
+        return
+        
     tokens = get_tokens(user.id)
     refs = get_referrals(user.id)
 

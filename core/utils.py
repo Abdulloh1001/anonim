@@ -1,6 +1,9 @@
 import hmac, hashlib, time, asyncio
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ContextTypes
 from .db import db_conn
-from .config import SECRET_KEY, LOG_CHANNEL_ID
+from .config import SECRET_KEY, LOG_CHANNEL_ID, CHANNEL_LINK
+from .channel import check_subscription
 
 ALPH = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
@@ -129,6 +132,24 @@ def record_session(owner_id, anon_id):
     conn.close()
 
 _last_log_time = 0
+
+async def check_subscription_and_show_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """Obunani tekshirish va obuna bo'lish tugmasini ko'rsatish"""
+    user = update.effective_user
+    is_subscribed = await check_subscription(user.id, context)
+    
+    if not is_subscribed:
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("📢 Kanalga o'tish", url=CHANNEL_LINK)],
+            [InlineKeyboardButton("✅ Obuna bo'ldim", callback_data="check_subscription")]
+        ])
+        txt = (
+            f"❗️ Bot funksiyalaridan foydalanish uchun kanalimizga obuna bo'ling.\n\n"
+            f"👉 Obuna bo'lgandan so'ng \"✅ Obuna bo'ldim\" tugmasini bosing."
+        )
+        await update.message.reply_text(txt, parse_mode="HTML", reply_markup=keyboard)
+        return False
+    return True
 
 async def log_channel_send(bot, text):
     global _last_log_time
