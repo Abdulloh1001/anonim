@@ -3,7 +3,7 @@ from telegram import ChatMember
 import random
 import string
 from .db import db_conn
-from .config import CHANNEL_ID
+from .config import CHANNEL_ID, CHANNEL_USERNAME
 
 async def check_subscription(user_id: int, context: ContextTypes.DEFAULT_TYPE) -> bool:
     """Foydalanuvchi kanalga obuna bo'lganligini tekshirish"""
@@ -17,7 +17,7 @@ def generate_random_link():
     """Random link generatsiya qilish"""
     chars = string.ascii_letters + string.digits
     random_suffix = ''.join(random.choice(chars) for _ in range(10))
-    return f"t.me/{CHANNEL_ID}/{random_suffix}"
+    return f"https://t.me/{CHANNEL_USERNAME}?start={random_suffix}"
 
 def save_user_link(user_id: int, link: str):
     """Foydalanuvchi linkini saqlash"""

@@ -21,13 +21,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Kanalga obuna bo'lganligini tekshirish
     is_subscribed = await check_subscription(user.id, context)
     if not is_subscribed:
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("📢 Kanalga o'tish", url=CHANNEL_LINK)]
+        ])
         txt = (
             f"<b>Assalamu alaykum, {user.first_name or 'foydalanuvchi'}!</b>\n\n"
-            f"Bot funksiyalaridan foydalanish uchun kanalimizga obuna bo'ling:\n"
-            f"<a href='{CHANNEL_LINK}'>Kanalga o'tish</a>\n\n"
-            f"Obuna bo'lgandan so'ng /start ni qayta bosing."
+            f"❗️ Bot funksiyalaridan foydalanish uchun kanalimizga obuna bo'ling.\n\n"
+            f"👉 Obuna bo'lgandan so'ng /start ni qayta bosing."
         )
-        await update.message.reply_text(txt, parse_mode="HTML")
+        await update.message.reply_text(txt, parse_mode="HTML", reply_markup=keyboard)
         return
 
     # Agar referal orqali kelsa
@@ -67,13 +69,37 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def token(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     ensure_user(user)
-    pl = make_payload(user.id)
-    link = f"https://t.me/{context.bot.username}?start={pl}"
+    
+    # Kanalga obuna bo'lganligini tekshirish
+    is_subscribed = await check_subscription(user.id, context)
+    if not is_subscribed:
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("📢 Kanalga o'tish", url=CHANNEL_LINK)]
+        ])
+        txt = (
+            f"<b>❗️ Bot funksiyalaridan foydalanish uchun kanalimizga obuna bo'ling.</b>\n\n"
+            f"👉 Obuna bo'lgandan so'ng /start ni qayta bosing."
+        )
+        await update.message.reply_text(txt, parse_mode="HTML", reply_markup=keyboard)
+        return
+    
+    # Referral link olish
+    conn = db_conn()
+    c = conn.cursor()
+    c.execute("SELECT ref_link FROM users WHERE id=%s", (user.id,))
+    row = c.fetchone()
+    conn.close()
+    
+    if not row or not row[0]:
+        ref_link = generate_random_link()
+        save_user_link(user.id, ref_link)
+    else:
+        ref_link = row[0]
     
     txt = (
         "🎯 Token yig'ish uchun quyidagi havolani do'stlaringizga yuboring:\n\n"
-        f"<a href='{link}'>{link}</a>\n\n"
-        "💎 Har bir yangi a'zo uchun 5 ta token olasiz!\n"
+        f"<a href='{ref_link}'>{ref_link}</a>\n\n"
+        "💎 Do'stingiz kanalga a'zo bo'lganda 5 ta token olasiz!\n\n"
         "📱 Premium xususiyatlarni yoqish uchun /balans buyrug'ini bosing."
     )
     
