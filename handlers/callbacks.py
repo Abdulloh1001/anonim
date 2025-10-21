@@ -13,24 +13,30 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if query.data == "check_subscription":
         is_subscribed = await check_subscription(user.id, context)
         if not is_subscribed:
-            await query.answer("❌ Siz hali kanalga obuna bo'lmagansiz! Avval kanalga obuna bo'ling.", show_alert=True)
-        else:
-            await query.answer("✅ Obuna tekshirildi! Bot funksiyalari endi sizga ochiq.", show_alert=True)
-            # Foydalanuvchini botga xush kelibsiz xabari bilan kutib olish
-            ref_link = generate_random_link()
-            save_user_link(user.id, ref_link)
-            
-            txt = (
-                f"<b>🎉 Tabriklaymiz! Bot funksiyalari endi sizga ochiq.</b>\n\n"
-                f"Bu sizning referral havolangiz:\n<code>{ref_link}</code>\n\n"
-                f"Do'stlaringizni taklif qiling va har bir yangi a'zo uchun {REF_REWARD} token oling!\n\n"
-                f"💎 Token yig'ish uchun /token buyrug'ini bosing.\n"
-                f"💰 Balansni tekshirish uchun /balans buyrug'ini bosing."
-            )
-            keyboard = InlineKeyboardMarkup([[
-                InlineKeyboardButton("💎 Token yig'ish", callback_data="show_token_info")
-            ]])
-            await query.message.edit_text(txt, parse_mode="HTML", reply_markup=keyboard)
+            await query.answer("❌ Siz hali kanalga obuna bo'lmadingiz!", show_alert=True)
+            return
+
+        # ✅ Obuna bo‘lgan bo‘lsa:
+        await query.answer("✅ Obuna tekshirildi!", show_alert=True)
+
+        # Foydalanuvchini bazada qayd etamiz
+        from core.utils import ensure_user
+        ensure_user(user)
+
+        # Referral link yaratamiz
+        from core.channel import generate_random_link, save_user_link
+        ref_link = generate_random_link()
+        save_user_link(user.id, ref_link)
+
+        # Foydalanuvchiga tabrik xabar
+        text = (
+            f"🎉 Tabriklaymiz, {user.first_name}!\n\n"
+            f"Endi bot funksiyalaridan to‘liq foydalansangiz bo‘ladi.\n\n"
+            f"📎 Sizning referal havolangiz:\n<a href='{ref_link}'>{ref_link}</a>\n\n"
+            f"💰 Token yig‘ish uchun /token buyrug‘ini bosing.\n"
+            f"📊 Balansni tekshirish uchun /balans buyrug‘ini bosing."
+        )
+        await query.message.edit_text(text, parse_mode="HTML")
 
     elif query.data == "show_token_info":
         # Obunani tekshirish
