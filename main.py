@@ -1,8 +1,6 @@
 import os
-import time
 import hmac
 import hashlib
-import asyncio
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 from dotenv import load_dotenv
@@ -10,6 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+CHANNEL_LINK = os.getenv("CHANNEL_LINK", "https://t.me/eclipse_1oo1")
 SECRET_KEY = os.getenv("SECRET_KEY", "anon123")
 
 USERS = {}
@@ -18,8 +17,7 @@ SESSIONS = {}
 ALPH = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 def b62encode(n: int) -> str:
-    if n == 0:
-        return ALPH[0]
+    if n == 0: return ALPH[0]
     s = []
     while n > 0:
         s.append(ALPH[n % 62])
@@ -58,16 +56,27 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         owner_id = parse_payload(args[0])
         if owner_id and owner_id != user.id:
             SESSIONS[user.id] = owner_id
-            await update.message.reply_text("🔒 Anonim xabar yuborish uchun xabaringizni yozing yoki media yuboring!")
+            await update.message.reply_text(
+                "🔒 Anonim xabar yuborish uchun xabaringizni yozing yoki media yuboring!"
+            )
             return
 
     payload = make_payload(user.id)
     link = f"https://t.me/{context.bot.username}?start={payload}"
 
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("📢 Kanalga o'tish", url=CHANNEL_LINK)]
+    ])
+
     await update.message.reply_text(
-        f"<b>🔗 Sizning anonim havolangiz:</b>\n{link}\n\n"
-        "Bu havolani boshqalarga yuboring, ular shu orqali sizga anonim xabar yoza oladi!",
-        parse_mode="HTML"
+        f"<b>🔒 Sizning maxsus havolangiz:</b>\n{link}\n\n"
+        "Bu havola orqali anonim xabarlar yuboriladi.\n\n"
+        "📨 Ular sizga shunday ko‘rinishda yetadi:\n"
+        "✍️ Matn xabarlar\n"
+        "📸 Rasm / video / audio / ovozli xabarlar\n\n"
+        "📢 Yangiliklardan xabardor bo‘lish uchun kanalimizga qo‘shiling 👇",
+        parse_mode="HTML",
+        reply_markup=keyboard
     )
 
 
@@ -79,10 +88,10 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if anon_for:
         await context.bot.send_message(
             chat_id=anon_for,
-            text=f"🕶 <b>Anonimdan:</b>\n{msg.text}",
+            text=f"🕶 <b>Anonimdan xabar:</b>\n{msg.text}",
             parse_mode="HTML"
         )
-        await msg.reply_text("✅ Xabaringiz yuborildi (anonim).")
+        await msg.reply_text("✅ Xabaringiz anonim tarzda yuborildi.")
     else:
         await msg.reply_text("❗ /start buyrug‘i orqali anonim suhbatni boshlang.")
 
@@ -109,7 +118,7 @@ async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif msg.audio:
             file_id = msg.audio.file_id
             await context.bot.send_audio(chat_id=anon_for, audio=file_id, caption="🕶 Anonimdan audio")
-        await msg.reply_text("✅ Media yuborildi (anonim).")
+        await msg.reply_text("✅ Media yuborildi.")
     except Exception as e:
         await msg.reply_text(f"❌ Xatolik: {e}")
 
