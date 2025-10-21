@@ -1,7 +1,6 @@
 from telegram import Update
 from telegram.ext import ContextTypes
-from core.utils import ensure_user, get_tokens, find_owner_for_anon, get_anon_from_reply, save_notification, display_for, log_channel_send
-from core.config import PHOTO_TOKEN_THRESHOLD
+from core.utils import ensure_user, find_owner_for_anon, get_anon_from_reply, save_notification, display_for, log_channel_send
 from core.db import db_conn
 
 from core.channel import get_referrer_by_link
@@ -37,20 +36,15 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await msg.reply_text("✅ Xabaringiz yuborildi.")
     await log_channel_send(context.bot, f"{display_for(user.id)} → o'ziga: {msg.text}")
 
-async def check_media_permission(user_id):
-    """Media yuborish huquqini tekshirish"""
-    return True  # Hamma media yubora oladi
-
 async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE, media_type="media"):
     """Universal media handler"""
     msg = update.message
     user = msg.from_user
     ensure_user(user)
     
-    # Media yuborish huquqini tekshirish
-    has_permission = await check_media_permission(user.id)
-    if not has_permission:
-        await msg.reply_text("❌ Sizda media yuborish huquqi yo'q. /balans orqali tokenlaringizni tekshiring va ta'rifni faollashtiring.")
+    # Media yuborishga ruxsat berish
+    if not user:
+        await msg.reply_text("❌ Xatolik yuz berdi. Qayta urinib ko'ring.")
         return
 
     # Anonim chatni tekshirish
