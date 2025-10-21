@@ -1,59 +1,68 @@
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 import time
 from core.utils import (
     ensure_user, make_payload, parse_payload,
     record_session, display_for, log_channel_send, db_conn
 )
+from core.config import CHANNEL_LINK
 
 ADMIN_IDS = [7404099386]  # Admin ID'larini shu yerga qo'shing
-
-from core.channel import generate_random_link, save_user_link, get_referrer_by_link
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     is_new = ensure_user(user)
     args = context.args
 
-    # Kanalga obuna bo'lganligini tekshirish
-    is_subscribed = await check_subscription(user.id, context)
-    if not is_subscribed:
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("📢 Kanalga o'tish", url=CHANNEL_LINK)],
-            [InlineKeyboardButton("✅ Obuna bo'ldim", callback_data="check_subscription")]
-        ])
-        txt = (
-            f"<b>Assalamu alaykum, {user.first_name or 'foydalanuvchi'}!</b>\n\n"
-            f"❗️ Bot funksiyalaridan foydalanish uchun kanalimizga obuna bo'ling.\n\n"
-            f"👉 Obuna bo'lgandan so'ng \"✅ Obuna bo'ldim\" tugmasini bosing."
+    if args and args[0]:  # Agar havoladan kirgan bo'lsa
+        start_arg = args[0]
+        # ID ni aniqlaymiz
+        owner_id = parse_payload(start_arg)
+        if owner_id == user.id:
+            await update.message.reply_text("❌ O'zingizga xabar yubora olmaysiz!")
+            return
+            
+        if owner_id:
+            record_session(owner_id, user.id)
+            await update.message.reply_text(
+                "🔒 Anonim chatga xush kelibsiz! \n"
+                "Endi siz xabaringizni yuboring, men uni egasiga yetkazaman.\n\n"
+                "Yuborish mumkin:\n"
+                "✍️ Matn xabarlar\n"
+                "📸 Rasmlar\n"
+                "🎥 Videolar\n"
+                "🎵 Audio/MP3\n"
+                "🎤 Ovozli xabarlar"
+            )
+            return
+
+    # Yangi foydalanuvchiga botni tushuntirish
+    if is_new:
+        await update.message.reply_text(
+            "👋 Botga xush kelibsiz!\n\n"
+            "Bu bot orqali siz anonim xabarlar yuborishingiz mumkin.\n"
+            "/help - qo'llanma olish"
         )
-        await update.message.reply_text(txt, parse_mode="HTML", reply_markup=keyboard)
-        return
-
-    # Agar referal orqali kelsa
-    if args:
-        link = args[0]
-        owner_id = get_referrer_by_link(link)
-        if owner_id and owner_id != user.id:
-            created = add_referral(owner_id, user.id)
-            if created:
-                record_session(owner_id, user.id)
-                await context.bot.send_message(
-                    chat_id=owner_id,
-                    text=f"🎉 Sizning referalingiz orqali yangi foydalanuvchi keldi!",
-                    parse_mode="Markdown"
-                )
-                
-                prev, new = add_tokens(owner_id, REF_REWARD)
-                await log_channel_send(context.bot, f"{display_for(owner_id)} {REF_REWARD} token oldi ✅")
-
-    # Yangi referral link yaratish
-    ref_link = generate_random_link()
-    save_user_link(user.id, ref_link)
-
-    txt = (
-        f"<b>Assalamu alaykum, {user.first_name or 'foydalanuvchi'}!</b>\n\n"
-        f"Bu sizning referral havolangiz:\n<a href='{ref_link}'>{ref_link}</a>\n\n"
+    
+    payload = make_payload(user.id)
+    link = f"https://t.me/{context.bot.username}?start={payload}"
+    
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("📢 Kanalimizga qo'shiling", url=CHANNEL_LINK)]
+    ])
+    
+    await update.message.reply_text(
+        f"<b>🔒 Sizning maxsus havolangiz:</b>\n{link}\n\n"
+        f"<b>Bu havola orqali do'stlaringiz sizga quyidagilarni yubora olishadi:</b>\n"
+        f"✍️ Matn xabarlar\n"
+        f"📸 Rasmlar\n"
+        f"🎥 Videolar\n"
+        f"🎵 Audio/MP3\n"
+        f"🎤 Ovozli xabarlar\n\n"
+        f"<i>📢 Yangiliklar va e'lonlar uchun kanalimizga qo'shiling</i>",
+        parse_mode="HTML",
+        reply_markup=keyboard
+    ),(
         f"Ushbu linkni boshqalarga yuboring — do'stlaringiz kanal a'zosi bo'lganda siz token olasiz!\n\n"
         f"💎 Token yig'ish uchun /token buyrug'ini bosing."
     )

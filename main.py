@@ -1,7 +1,7 @@
 import threading
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, CallbackQueryHandler
 from core.db import init_db
-from handlers.commands import start, help_cmd, balans, give_tokens, token
+from handlers.commands import start, help_cmd
 from handlers.messages import handle_text, handle_photo, handle_sticker, handle_video, handle_voice, handle_audio
 from handlers.callbacks import handle_callback
 from core.config import BOT_TOKEN
@@ -18,10 +18,7 @@ def run_bot():
     app = ApplicationBuilder().token(BOT_TOKEN).connect_timeout(10).read_timeout(10).build()
 
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("token", token))
-    app.add_handler(CommandHandler("balans", balans))
     app.add_handler(CommandHandler("help", help_cmd))
-    app.add_handler(CommandHandler("give_tokens", give_tokens))
 
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     app.add_handler(MessageHandler(filters.PHOTO & ~filters.COMMAND, handle_photo))
