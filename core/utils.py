@@ -1,9 +1,8 @@
 import hmac, hashlib, time, asyncio
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update
 from telegram.ext import ContextTypes
 from .db import db_conn
-from .config import SECRET_KEY, LOG_CHANNEL_ID, CHANNEL_LINK
-from .channel import check_subscription
+from .config import SECRET_KEY, LOG_CHANNEL_ID
 
 ALPH = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
@@ -39,28 +38,15 @@ def ensure_user(u):
     c.execute("SELECT id FROM users WHERE id=%s", (u.id,))
     new_user = False
     if c.fetchone() is None:
-        c.execute("INSERT INTO users (id, username, first_name, created_at, tokens, photo_active) VALUES (%s,%s,%s,%s,%s,%s)",
-                  (u.id, u.username, u.first_name or "", time.time(), 0, 0))
+        c.execute("INSERT INTO users (id, username, first_name, created_at) VALUES (%s,%s,%s,%s)",
+                  (u.id, u.username, u.first_name or "", time.time()))
         new_user = True
     else:
         c.execute("UPDATE users SET username=%s, first_name=%s WHERE id=%s", (u.username, u.first_name or "", u.id))
     conn.commit(); conn.close()
     return new_user
 
-def get_tokens(uid):
-    conn=db_conn();c=conn.cursor()
-    c.execute("SELECT tokens FROM users WHERE id=%s", (uid,))
-    r=c.fetchone();conn.close()
-    return r[0] if r else 0
 
-def add_tokens(uid, n):
-    conn=db_conn();c=conn.cursor()
-    c.execute("SELECT tokens FROM users WHERE id=%s", (uid,))
-    r=c.fetchone(); prev=r[0] if r else 0
-    new=prev+n
-    c.execute("UPDATE users SET tokens=%s WHERE id=%s", (new, uid))
-    conn.commit();conn.close()
-    return prev,new
 
 def display_for(u_id: int):
     conn = db_conn(); c = conn.cursor()
@@ -133,23 +119,7 @@ def record_session(owner_id, anon_id):
 
 _last_log_time = 0
 
-async def check_subscription_and_show_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
-    """Obunani tekshirish va obuna bo'lish tugmasini ko'rsatish"""
-    user = update.effective_user
-    is_subscribed = await check_subscription(user.id, context)
-    
-    if not is_subscribed:
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("📢 Kanalga o'tish", url=CHANNEL_LINK)],
-            [InlineKeyboardButton("✅ Obuna bo'ldim", callback_data="check_subscription")]
-        ])
-        txt = (
-            f"❗️ Bot funksiyalaridan foydalanish uchun kanalimizga obuna bo'ling.\n\n"
-            f"👉 Obuna bo'lgandan so'ng \"✅ Obuna bo'ldim\" tugmasini bosing."
-        )
-        await update.message.reply_text(txt, parse_mode="HTML", reply_markup=keyboard)
-        return False
-    return True
+
 
 async def log_channel_send(bot, text):
     global _last_log_time

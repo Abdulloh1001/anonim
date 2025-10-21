@@ -1,17 +1,14 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update
 from telegram.ext import ContextTypes
 import time
 from core.utils import (
-    ensure_user, make_payload, parse_payload, add_referral,
-    record_session, add_tokens, get_tokens, get_referrals,
-    display_for, log_channel_send, db_conn, check_subscription_and_show_button
+    ensure_user, make_payload, parse_payload,
+    record_session, display_for, log_channel_send, db_conn
 )
-from core.config import REF_REWARD, PHOTO_TOKEN_THRESHOLD
 
 ADMIN_IDS = [7404099386]  # Admin ID'larini shu yerga qo'shing
 
-from core.channel import check_subscription, generate_random_link, save_user_link, get_referrer_by_link
-from core.config import CHANNEL_LINK
+from core.channel import generate_random_link, save_user_link, get_referrer_by_link
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user

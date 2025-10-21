@@ -14,8 +14,6 @@ def init_db():
             username TEXT,
             first_name TEXT,
             created_at DOUBLE PRECISION,
-            tokens INTEGER DEFAULT 0,
-            photo_active INTEGER DEFAULT 0,
             ref_link TEXT UNIQUE
         )
     """)
