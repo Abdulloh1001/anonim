@@ -1,7 +1,8 @@
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from core.utils import get_tokens, db_conn, display_for, log_channel_send
-from core.config import PHOTO_TOKEN_THRESHOLD
+from core.config import PHOTO_TOKEN_THRESHOLD, REF_REWARD
+from core.channel import check_subscription, generate_random_link, save_user_link
 
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query

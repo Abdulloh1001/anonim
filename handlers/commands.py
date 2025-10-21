@@ -22,12 +22,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     is_subscribed = await check_subscription(user.id, context)
     if not is_subscribed:
         keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("📢 Kanalga o'tish", url=CHANNEL_LINK)]
+            [InlineKeyboardButton("📢 Kanalga o'tish", url=CHANNEL_LINK)],
+            [InlineKeyboardButton("✅ Obuna bo'ldim", callback_data="check_subscription")]
         ])
         txt = (
             f"<b>Assalamu alaykum, {user.first_name or 'foydalanuvchi'}!</b>\n\n"
             f"❗️ Bot funksiyalaridan foydalanish uchun kanalimizga obuna bo'ling.\n\n"
-            f"👉 Obuna bo'lgandan so'ng /start ni qayta bosing."
+            f"👉 Obuna bo'lgandan so'ng \"✅ Obuna bo'ldim\" tugmasini bosing."
         )
         await update.message.reply_text(txt, parse_mode="HTML", reply_markup=keyboard)
         return
