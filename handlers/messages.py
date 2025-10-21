@@ -4,10 +4,18 @@ from core.utils import ensure_user, get_tokens, find_owner_for_anon, get_anon_fr
 from core.config import PHOTO_TOKEN_THRESHOLD
 from core.db import db_conn
 
+from core.channel import check_subscription, get_referrer_by_link
+
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     user = msg.from_user
     ensure_user(user)
+
+    # Kanalga obuna bo'lganligini tekshirish
+    is_subscribed = await check_subscription(user.id, context)
+    if not is_subscribed:
+        await msg.reply_text("❗ Bot funksiyalaridan foydalanish uchun kanalga obuna bo'ling va /start ni qayta bosing.")
+        return
 
     # egasi anonimga javob yozgan bo'lsa
     if msg.reply_to_message:
@@ -18,27 +26,32 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await log_channel_send(context.bot, f"{display_for(user.id)} ➡️ {display_for(anon_id)}: {msg.text}")
         return
 
-    # anonim xabar yuborish
-    owner_id = find_owner_for_anon(user.id)
-    if not owner_id:
-        await msg.reply_text("❗ Siz anonim suhbatga ulanmagansiz.")
+    # Foydalanuvchi havolasini olish
+    conn = db_conn()
+    c = conn.cursor()
+    c.execute("SELECT ref_link FROM users WHERE id=%s", (user.id,))
+    row = c.fetchone()
+    conn.close()
+    
+    if not row or not row[0]:
+        await msg.reply_text("❗ Iltimos, avval /start buyrug'ini bosing.")
         return
-
-    sent = await context.bot.send_message(chat_id=owner_id, text=f"🕶 Anonimdan: {msg.text}")
-    save_notification(owner_id, user.id, sent.message_id)
+        
+    # O'zining havolasi orqali yuborilgan xabarni o'ziga qaytarish
+    sent = await context.bot.send_message(chat_id=user.id, text=f"🕶 Anonimdan: {msg.text}")
+    save_notification(user.id, user.id, sent.message_id)
     await msg.reply_text("✅ Xabaringiz yuborildi.")
-    await log_channel_send(context.bot, f"{display_for(user.id)} → {display_for(owner_id)}: {msg.text}")
+    await log_channel_send(context.bot, f"{display_for(user.id)} → o'ziga: {msg.text}")
 
 async def check_media_permission(user_id):
     """Media yuborish huquqini tekshirish"""
-    tokens = get_tokens(user_id)
     conn = db_conn()
     c = conn.cursor()
     c.execute("SELECT photo_active FROM users WHERE id=%s", (user_id,))
     row = c.fetchone()
     photo_active = row[0] if row is not None else 0
     conn.close()
-    return tokens >= PHOTO_TOKEN_THRESHOLD and photo_active
+    return photo_active
 
 async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE, media_type="media"):
     """Universal media handler"""
