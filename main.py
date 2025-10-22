@@ -23,8 +23,11 @@ def display_for(user):
     if not user:
         return "Noma’lum"
     if getattr(user, "username", None):
-        return f"@{html.escape(user.username)}"
-    return f'<a href="tg://user?id={user.id}">Foydalanuvchi</a>'
+        # Username bor — @username shaklida bosiladigan link
+        return f'<a href="https://t.me/{html.escape(user.username)}">@{html.escape(user.username)}</a>'
+    else:
+        # Username yo'q — ID bilan ko'k link
+        return f'<a href="tg://user?id={user.id}">ID:{user.id}</a>'
 
 
 # 🔹 Helper: log kanaliga xabar yuborish
