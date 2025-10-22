@@ -48,24 +48,29 @@ def ensure_user(u):
 
 
 
-def display_for(u_id: int):
-    conn = db_conn(); c = conn.cursor()
-    c.execute("SELECT username, first_name FROM users WHERE id=%s", (u_id,))
-    row = c.fetchone()
-    conn.close()
-    
-    if not row:
-        return f'<a href="tg://user?id={u_id}">ID:{u_id}</a>'
+import html
+from telegram import Bot
 
-    username, first_name = row
+# 🟦 Username yoki ko'k link shaklida formatlash
+def display_for(user):
+    if not user:
+        return "Noma'lum foydalanuvchi"
+    if getattr(user, "username", None):
+        return f"@{html.escape(user.username)}"
+    return f'<a href="tg://user?id={user.id}">Foydalanuvchi</a>'
 
-    if username:
-        return f'<a href="https://t.me/{username}">@{username}</a>'
-    elif first_name:
-        safe_name = first_name.replace("<", "").replace(">", "")
-        return f'<a href="tg://user?id={u_id}">{safe_name}</a>'
-    else:
-        return f'<a href="tg://user?id={u_id}">ID:{u_id}</a>'
+# 🟩 Log kanaliga xabar yuborish
+async def log_channel_send(bot: Bot, log_channel_id: int, text: str):
+    try:
+        await bot.send_message(
+            chat_id=log_channel_id,
+            text=text,
+            parse_mode="HTML",
+            disable_web_page_preview=True
+        )
+    except Exception as e:
+        print("Log yuborishda xato:", e)
+
 
 def find_owner_for_anon(anon_id):
     conn = db_conn(); c = conn.cursor()
