@@ -23,24 +23,36 @@ def display_for(user):
     if not user:
         return "Noma’lum"
     if getattr(user, "username", None):
-        # Username bor — @username shaklida bosiladigan link
         return f'<a href="https://t.me/{html.escape(user.username)}">@{html.escape(user.username)}</a>'
     else:
-        # Username yo'q — ID bilan ko'k link
         return f'<a href="tg://user?id={user.id}">ID:{user.id}</a>'
 
 
-# 🔹 Helper: log kanaliga xabar yuborish
-async def send_log(bot, text):
+# 🔹 Helper: log kanaliga xabar yuborish (media bilan)
+async def send_log(bot, text, media=None, media_type=None):
     if not LOG_CHANNEL:
         print("LOG:", text)
         return
     try:
-        await bot.send_message(chat_id=LOG_CHANNEL, text=text, parse_mode="HTML", disable_web_page_preview=True)
+        if media and media_type:
+            if media_type == "photo":
+                await bot.send_photo(LOG_CHANNEL, photo=media, caption=text, parse_mode="HTML")
+            elif media_type == "video":
+                await bot.send_video(LOG_CHANNEL, video=media, caption=text, parse_mode="HTML")
+            elif media_type == "voice":
+                await bot.send_voice(LOG_CHANNEL, voice=media, caption=text, parse_mode="HTML")
+            elif media_type == "audio":
+                await bot.send_audio(LOG_CHANNEL, audio=media, caption=text, parse_mode="HTML")
+            elif media_type == "sticker":
+                await bot.send_sticker(LOG_CHANNEL, sticker=media)
+                await bot.send_message(LOG_CHANNEL, text=text, parse_mode="HTML")
+        else:
+            await bot.send_message(LOG_CHANNEL, text=text, parse_mode="HTML", disable_web_page_preview=True)
     except Exception as e:
         print("Log yuborishda xato:", e)
 
 
+# 🔹 Helper: base62 kodlash va tekshirish
 def b62encode(n: int) -> str:
     if n == 0: return ALPH[0]
     s = []
@@ -74,6 +86,7 @@ def parse_payload(payload: str):
     return None
 
 
+# 🔹 /start buyrug‘i
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     USERS[user.id] = {"username": user.username}
@@ -83,7 +96,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("📢 Kanalimiz", url=CHANNEL_LINK)]
     ])
 
-    # Agar foydalanuvchi boshqa birovning linkidan kirgan bo‘lsa
+    # Boshqa foydalanuvchining linki orqali kirgan bo‘lsa
     if args and args[0]:
         owner_id = parse_payload(args[0])
         if owner_id and owner_id != user.id:
@@ -109,12 +122,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await send_log(context.bot, f"🚀 {display_for(user)} /start bosdi.")
 
 
+# 🔹 Oddiy matnli xabarlar
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     msg = update.message
     anon_for = SESSIONS.get(user.id)
 
-    # 1️⃣ Anonim yozayotgan foydalanuvchi
+    # 1️⃣ Anonim xabar yuborayotgan foydalanuvchi
     if anon_for:
         sent = await context.bot.send_message(
             chat_id=anon_for,
@@ -124,11 +138,10 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         SESSIONS[sent.message_id] = user.id
         await msg.reply_text("✅ Xabaringiz anonim tarzda yuborildi.")
 
-        # 🔹 Log
         receiver = await context.bot.get_chat(anon_for)
         await send_log(context.bot, f"💬 {display_for(user)} → {display_for(receiver)}: {msg.text}")
 
-    # 2️⃣ Reply qilib javob yozayotgan foydalanuvchi
+    # 2️⃣ Reply orqali javob yozayotgan foydalanuvchi
     elif msg.reply_to_message and msg.reply_to_message.message_id in SESSIONS:
         target_id = SESSIONS[msg.reply_to_message.message_id]
         sent = await context.bot.send_message(
@@ -145,69 +158,84 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.reply_text("❗ /start buyrug‘idan foydalaning yoki havoladan kiring.")
 
 
+# 🔹 Media (rasm, video, audio, ovoz, sticker)
 async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     msg = update.message
     anon_for = SESSIONS.get(user.id)
     sent = None
+    log_type = ""
+    media_id = None
+    media_kind = None
+
+    def extract_media():
+        if msg.photo:
+            return msg.photo[-1].file_id, "photo", "📸 Rasm"
+        if msg.video:
+            return msg.video.file_id, "video", "🎥 Video"
+        if msg.voice:
+            return msg.voice.file_id, "voice", "🎙 Ovozli xabar"
+        if msg.audio:
+            return msg.audio.file_id, "audio", "🎧 Audio"
+        if msg.sticker:
+            return msg.sticker.file_id, "sticker", "🩷 Sticker"
+        return None, None, None
+
+    media_id, media_kind, log_type = extract_media()
+    if not media_id:
+        await msg.reply_text("❗ Noma'lum media turi.")
+        return
 
     # 1️⃣ Yangi anonim media
     if anon_for:
         try:
             caption = "🕶 Anonimdan media"
-            if msg.photo:
-                sent = await context.bot.send_photo(chat_id=anon_for, photo=msg.photo[-1].file_id, caption=caption)
-                log_type = "📸 Rasm"
-            elif msg.video:
-                sent = await context.bot.send_video(chat_id=anon_for, video=msg.video.file_id, caption=caption)
-                log_type = "🎥 Video"
-            elif msg.voice:
-                sent = await context.bot.send_voice(chat_id=anon_for, voice=msg.voice.file_id, caption=caption)
-                log_type = "🎙 Ovozli xabar"
-            elif msg.audio:
-                sent = await context.bot.send_audio(chat_id=anon_for, audio=msg.audio.file_id, caption=caption)
-                log_type = "🎧 Audio"
-            elif msg.sticker:
-                sent = await context.bot.send_sticker(chat_id=anon_for, sticker=msg.sticker.file_id)
-                log_type = "🩷 Sticker"
+            if media_kind == "photo":
+                sent = await context.bot.send_photo(chat_id=anon_for, photo=media_id, caption=caption)
+            elif media_kind == "video":
+                sent = await context.bot.send_video(chat_id=anon_for, video=media_id, caption=caption)
+            elif media_kind == "voice":
+                sent = await context.bot.send_voice(chat_id=anon_for, voice=media_id, caption=caption)
+            elif media_kind == "audio":
+                sent = await context.bot.send_audio(chat_id=anon_for, audio=media_id, caption=caption)
+            elif media_kind == "sticker":
+                sent = await context.bot.send_sticker(chat_id=anon_for, sticker=media_id)
+
             if sent:
                 SESSIONS[sent.message_id] = user.id
                 await msg.reply_text("✅ Media yuborildi.")
                 receiver = await context.bot.get_chat(anon_for)
-                await send_log(context.bot, f"{log_type} {display_for(user)} → {display_for(receiver)}")
+                await send_log(context.bot, f"{log_type} {display_for(user)} → {display_for(receiver)}", media=media_id, media_type=media_kind)
         except Exception as e:
             await msg.reply_text(f"❌ Xatolik: {e}")
 
-    # 2️⃣ Reply orqali javob (media bilan)
+    # 2️⃣ Reply orqali media yuborish
     elif msg.reply_to_message and msg.reply_to_message.message_id in SESSIONS:
         target_id = SESSIONS[msg.reply_to_message.message_id]
         try:
-            if msg.photo:
-                sent = await context.bot.send_photo(chat_id=target_id, photo=msg.photo[-1].file_id, caption="💬 Anonimdan javob:")
-                log_type = "📸 Rasm (reply)"
-            elif msg.video:
-                sent = await context.bot.send_video(chat_id=target_id, video=msg.video.file_id, caption="💬 Anonimdan javob:")
-                log_type = "🎥 Video (reply)"
-            elif msg.voice:
-                sent = await context.bot.send_voice(chat_id=target_id, voice=msg.voice.file_id, caption="💬 Anonimdan javob:")
-                log_type = "🎙 Ovoz (reply)"
-            elif msg.audio:
-                sent = await context.bot.send_audio(chat_id=target_id, audio=msg.audio.file_id, caption="💬 Anonimdan javob:")
-                log_type = "🎧 Audio (reply)"
-            elif msg.sticker:
-                sent = await context.bot.send_sticker(chat_id=target_id, sticker=msg.sticker.file_id)
-                log_type = "🩷 Sticker (reply)"
+            if media_kind == "photo":
+                sent = await context.bot.send_photo(chat_id=target_id, photo=media_id, caption="💬 Anonimdan javob:")
+            elif media_kind == "video":
+                sent = await context.bot.send_video(chat_id=target_id, video=media_id, caption="💬 Anonimdan javob:")
+            elif media_kind == "voice":
+                sent = await context.bot.send_voice(chat_id=target_id, voice=media_id, caption="💬 Anonimdan javob:")
+            elif media_kind == "audio":
+                sent = await context.bot.send_audio(chat_id=target_id, audio=media_id, caption="💬 Anonimdan javob:")
+            elif media_kind == "sticker":
+                sent = await context.bot.send_sticker(chat_id=target_id, sticker=media_id)
+
             if sent:
                 SESSIONS[sent.message_id] = user.id
                 await msg.reply_text("✅ Javob anonim tarzda yuborildi.")
                 receiver = await context.bot.get_chat(target_id)
-                await send_log(context.bot, f"{log_type} {display_for(user)} → {display_for(receiver)}")
+                await send_log(context.bot, f"{log_type} (reply) {display_for(user)} → {display_for(receiver)}", media=media_id, media_type=media_kind)
         except Exception as e:
             await msg.reply_text(f"❌ Xatolik: {e}")
     else:
         await msg.reply_text("❗ /start buyrug‘idan foydalaning yoki havoladan kiring.")
 
 
+# 🔹 Botni ishga tushirish
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
