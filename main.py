@@ -1,8 +1,19 @@
 import os
 import hmac
 import hashlib
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+)
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+    filters,
+)
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -11,14 +22,16 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHANNEL_LINK = os.getenv("CHANNEL_LINK", "https://t.me/eclipse_1oo1")
 SECRET_KEY = os.getenv("SECRET_KEY", "anon123")
 
-# Foydalanuvchilar o‘rtasidagi anonim bog‘lanish
-SESSIONS = {}
+# Foydalanuvchilar o‘rtasidagi anonim sessiyalar
+SESSIONS = {}  # anon_id -> owner_id
+REPLY_MAP = {}  # owner_message_id -> anon_id
 
 ALPH = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
 def b62encode(n: int) -> str:
-    if n == 0: return ALPH[0]
+    if n == 0:
+        return ALPH[0]
     s = []
     while n > 0:
         s.append(ALPH[n % 62])
@@ -56,15 +69,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if args and args[0]:
         owner_id = parse_payload(args[0])
-        if owner_id and owner_id != user.id:
-            SESSIONS[user.id] = owner_id
-            SESSIONS[owner_id] = user.id
-            await update.message.reply_text(
-                "🔒 Endi anonim xabar yuborishingiz mumkin!"
-            )
+
+        if owner_id == user.id:
+            await update.message.reply_text("🪞 Siz o‘zingizning havolangizni bosdingiz.\nEndi anonim xabar yuborishingiz mumkin!")
             return
 
-    # foydalanuvchi o‘z havolasini oladi
+        if owner_id:
+            SESSIONS[user.id] = owner_id
+            await update.message.reply_text("🔒 Endi anonim xabar yuborishingiz mumkin!")
+            return
+
+    # Foydalanuvchi o‘z havolasini oladi
     payload = make_payload(user.id)
     link = f"https://t.me/{context.bot.username}?start={payload}"
 
@@ -84,56 +99,49 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     user = update.effective_user
-    target_id = None
+    target_id = SESSIONS.get(user.id)
 
-    # Reply orqali yozgan bo‘lsa
-    if msg.reply_to_message:
-        replied_from = msg.reply_to_message.from_user.id
-        # agar bu bot bo‘lsa, reply kimga tegishli ekanini aniqlaymiz
-        for k, v in SESSIONS.items():
-            if v == user.id and k != user.id:
-                target_id = k
-                break
-    else:
-        target_id = SESSIONS.get(user.id)
-
-    if not target_id:
-        await msg.reply_text("❗ /start buyrug‘i orqali anonim suhbatni boshlang.")
+    # Agar reply orqali yozilgan bo‘lsa
+    if msg.reply_to_message and msg.reply_to_message.message_id in REPLY_MAP:
+        anon_id = REPLY_MAP[msg.reply_to_message.message_id]
+        await context.bot.send_message(chat_id=anon_id, text=f"🕶 Egasidan javob:\n{msg.text}")
+        await msg.reply_text("✅ Javob anonim foydalanuvchiga yuborildi.")
         return
 
-    try:
-        if msg.text:
-            await context.bot.send_message(
-                chat_id=target_id,
-                text=f"🕶 <b>Anonimdan xabar:</b>\n{msg.text}",
-                parse_mode="HTML"
-            )
-        elif msg.photo:
-            file_id = msg.photo[-1].file_id
-            await context.bot.send_photo(chat_id=target_id, photo=file_id, caption="🕶 Anonimdan rasm")
-        elif msg.video:
-            file_id = msg.video.file_id
-            await context.bot.send_video(chat_id=target_id, video=file_id, caption="🕶 Anonimdan video")
-        elif msg.voice:
-            file_id = msg.voice.file_id
-            await context.bot.send_voice(chat_id=target_id, voice=file_id, caption="🕶 Anonimdan ovozli xabar")
-        elif msg.audio:
-            file_id = msg.audio.file_id
-            await context.bot.send_audio(chat_id=target_id, audio=file_id, caption="🕶 Anonimdan audio")
-
+    # Anonim foydalanuvchi yozsa
+    if target_id:
+        sent = await context.bot.send_message(
+            chat_id=target_id,
+            text=f"🕶 <b>Anonimdan:</b>\n{msg.text}",
+            parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("💬 Javob yozish", callback_data=f"reply_{user.id}")]
+            ])
+        )
+        REPLY_MAP[sent.message_id] = user.id
         await msg.reply_text("✅ Xabaringiz anonim tarzda yuborildi.")
-    except Exception as e:
-        await msg.reply_text(f"❌ Xatolik: {e}")
+        return
+
+    await msg.reply_text("❗ Avval /start buyrug‘i orqali anonim suhbatni boshlang.")
+
+
+async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    user = query.from_user
+
+    if query.data.startswith("reply_"):
+        anon_id = int(query.data.split("_")[1])
+        SESSIONS[user.id] = anon_id
+        await query.message.reply_text("✍️ Endi javob yozishingiz mumkin — yozgan xabaringiz anonim tarzda yuboriladi.")
 
 
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(
-        filters.ALL & ~filters.COMMAND,
-        handle_message
-    ))
+    app.add_handler(CallbackQueryHandler(handle_callback))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     print("🤖 Bot ishga tushdi...")
     app.run_polling()
