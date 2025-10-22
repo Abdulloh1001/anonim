@@ -12,8 +12,9 @@ CHANNEL_LINK = os.getenv("CHANNEL_LINK", "https://t.me/eclipse_1oo1")
 SECRET_KEY = os.getenv("SECRET_KEY", "anon123")
 
 USERS = {}
-SESSIONS = {}
+SESSIONS = {}  # foydalanuvchi id yoki msg_id orqali mapping
 ALPH = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
 
 def b62encode(n: int) -> str:
     if n == 0: return ALPH[0]
@@ -23,11 +24,13 @@ def b62encode(n: int) -> str:
         n //= 62
     return ''.join(reversed(s))
 
+
 def make_payload(user_id: int) -> str:
     uid_part = b62encode(user_id)
     hm = hmac.new(SECRET_KEY.encode(), str(user_id).encode(), hashlib.sha256).digest()
     short = int.from_bytes(hm[:6], 'big')
     return uid_part + b62encode(short)
+
 
 def parse_payload(payload: str):
     for i in range(1, len(payload)):
@@ -83,31 +86,27 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     anon_for = SESSIONS.get(user.id)
 
-    # agar u boshqa odamga yozayotgan bo‘lsa
-    if anon_for:
-        try:
-            sent = await context.bot.send_message(
-                chat_id=anon_for,
-                text=f"🕶 <b>Anonimdan xabar:</b>\n{msg.text}",
-                parse_mode="HTML"
-            )
-            # reply uchun mapping
-            SESSIONS[sent.message_id] = user.id
-            await msg.reply_text("✅ Xabaringiz anonim tarzda yuborildi.")
-        except Exception as e:
-            await msg.reply_text(f"❌ Xatolik: {e}")
+    if anon_for:  # anonim xabar
+        sent = await context.bot.send_message(
+            chat_id=anon_for,
+            text=f"🕶 <b>Anonimdan xabar:</b>\n{msg.text}",
+            parse_mode="HTML"
+        )
+        # reply uchun mapping
+        SESSIONS[sent.message_id] = user.id
+        await msg.reply_text("✅ Xabaringiz anonim tarzda yuborildi.")
+
+    elif msg.reply_to_message and msg.reply_to_message.message_id in SESSIONS:
+        target_id = SESSIONS[msg.reply_to_message.message_id]
+        sent = await context.bot.send_message(
+            chat_id=target_id,
+            text=f"💬 <b>Anonimdan javob:</b>\n{msg.text}",
+            parse_mode="HTML"
+        )
+        SESSIONS[sent.message_id] = user.id
+        await msg.reply_text("✅ Javob anonim tarzda yuborildi.")
     else:
-        # agar reply bo‘lsa (anonimga javob)
-        if msg.reply_to_message and msg.reply_to_message.message_id in SESSIONS:
-            target_id = SESSIONS[msg.reply_to_message.message_id]
-            await context.bot.send_message(
-                chat_id=target_id,
-                text=f"💬 <b>Anonimdan javob:</b>\n{msg.text}",
-                parse_mode="HTML"
-            )
-            await msg.reply_text("✅ Javob anonim tarzda yuborildi.")
-        else:
-            await msg.reply_text("❗ Anonim suhbatni boshlash uchun /start buyrug‘idan foydalaning.")
+        await msg.reply_text("❗ /start buyrug‘idan foydalaning yoki havoladan kiring.")
 
 
 async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -115,48 +114,56 @@ async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     anon_for = SESSIONS.get(user.id)
 
+    # 1️⃣ Agar foydalanuvchi kimdadir anonimga yozayotgan bo‘lsa
     if anon_for:
         try:
-            file = None
             caption = "🕶 Anonimdan media"
+            sent = None
             if msg.photo:
-                file = msg.photo[-1].file_id
-                await context.bot.send_photo(chat_id=anon_for, photo=file, caption=caption)
+                sent = await context.bot.send_photo(chat_id=anon_for, photo=msg.photo[-1].file_id, caption=caption)
             elif msg.video:
-                file = msg.video.file_id
-                await context.bot.send_video(chat_id=anon_for, video=file, caption=caption)
+                sent = await context.bot.send_video(chat_id=anon_for, video=msg.video.file_id, caption=caption)
             elif msg.voice:
-                file = msg.voice.file_id
-                await context.bot.send_voice(chat_id=anon_for, voice=file, caption=caption)
+                sent = await context.bot.send_voice(chat_id=anon_for, voice=msg.voice.file_id, caption=caption)
             elif msg.audio:
-                file = msg.audio.file_id
-                await context.bot.send_audio(chat_id=anon_for, audio=file, caption=caption)
+                sent = await context.bot.send_audio(chat_id=anon_for, audio=msg.audio.file_id, caption=caption)
             elif msg.sticker:
-                file = msg.sticker.file_id
-                await context.bot.send_sticker(chat_id=anon_for, sticker=file)
+                sent = await context.bot.send_sticker(chat_id=anon_for, sticker=msg.sticker.file_id)
+            if sent:
+                SESSIONS[sent.message_id] = user.id
             await msg.reply_text("✅ Media yuborildi.")
         except Exception as e:
             await msg.reply_text(f"❌ Xatolik: {e}")
 
+    # 2️⃣ Agar reply orqali anonimga javob beryapti
     elif msg.reply_to_message and msg.reply_to_message.message_id in SESSIONS:
         target_id = SESSIONS[msg.reply_to_message.message_id]
-        if msg.sticker:
-            await context.bot.send_sticker(chat_id=target_id, sticker=msg.sticker.file_id)
-        await msg.reply_text("✅ Anonimga media yuborildi.")
+        sent = None
+        if msg.photo:
+            sent = await context.bot.send_photo(chat_id=target_id, photo=msg.photo[-1].file_id, caption="💬 Anonimdan javob:")
+        elif msg.video:
+            sent = await context.bot.send_video(chat_id=target_id, video=msg.video.file_id, caption="💬 Anonimdan javob:")
+        elif msg.voice:
+            sent = await context.bot.send_voice(chat_id=target_id, voice=msg.voice.file_id, caption="💬 Anonimdan javob:")
+        elif msg.audio:
+            sent = await context.bot.send_audio(chat_id=target_id, audio=msg.audio.file_id, caption="💬 Anonimdan javob:")
+        elif msg.sticker:
+            sent = await context.bot.send_sticker(chat_id=target_id, sticker=msg.sticker.file_id)
+        if sent:
+            SESSIONS[sent.message_id] = user.id
+        await msg.reply_text("✅ Javob anonim tarzda yuborildi.")
     else:
-        await msg.reply_text("❗ Anonim suhbatni boshlash uchun /start buyrug‘idan foydalaning.")
+        await msg.reply_text("❗ /start buyrug‘idan foydalaning yoki havoladan kiring.")
 
 
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
-
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     app.add_handler(MessageHandler(
         (filters.PHOTO | filters.VIDEO | filters.VOICE | filters.AUDIO | filters.Sticker.ALL) & ~filters.COMMAND,
         handle_media
     ))
-
     print("🤖 Bot ishga tushdi...")
     app.run_polling()
 
